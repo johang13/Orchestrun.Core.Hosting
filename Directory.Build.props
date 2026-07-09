@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Authors>Chris Grobler</Authors>
+    
+  </PropertyGroup>
+</Project>
