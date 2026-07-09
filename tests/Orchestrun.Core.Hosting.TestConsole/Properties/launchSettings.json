@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Local": {
+      "commandName": "Project",
+      "applicationUrl": "https://localhost:5000",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Local"
+      }
+    }
+  }
+}
