@@ -2,15 +2,15 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Orchestrun.Core.Hosting.Options;
 
-public sealed class RabbitMqOptions
+internal sealed class RabbitMqOptions
 {
     internal static readonly string SectionName = "BusConfiguration:RabbitMq";
     [Required]
-    public string Host { get; set; } = string.Empty;
+    internal string Host { get; set; } = string.Empty;
     [Required]
-    public string VirtualHost { get; set; } = string.Empty;
+    internal string VirtualHost { get; set; } = string.Empty;
     [Required]
-    public string Username { get; set; } = string.Empty;
+    internal string Username { get; set; } = string.Empty;
     [Required]
-    public string Password { get; set; } = string.Empty;
+    internal string Password { get; set; } = string.Empty;
 }

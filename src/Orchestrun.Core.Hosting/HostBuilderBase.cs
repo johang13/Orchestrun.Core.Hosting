@@ -9,12 +9,25 @@ using Orchestrun.Core.Hosting.Services;
 
 namespace Orchestrun.Core.Hosting;
 
+/// <summary>
+/// Base class for building and configuring host environments in the Orchestrun framework.
+/// Provides a foundation for registering services, configuring RabbitMQ, and adding application settings.
+/// </summary>
+/// <typeparam name="TBuilder">
+/// The specific type of the builder that extends <see cref="HostBuilderBase{TBuilder}"/>.
+/// </typeparam>
 public abstract class HostBuilderBase<TBuilder>(
     IHostApplicationBuilder builder)
     where TBuilder : HostBuilderBase<TBuilder>
 {
     private readonly List<Action<IRabbitMqBusFactoryConfigurator>> _rabbitMqConfigurations = [];
 
+    /// <summary>
+    /// Configures core components and settings required for the host environment.
+    /// Invokes internal methods to add application settings, register default services,
+    /// and configure MassTransit with RabbitMQ.
+    /// This method is central to preparing the underlying infrastructure before building the host instance.
+    /// </summary>
     protected void BuildCore()
     {
         AddAppSettings();
@@ -22,12 +35,37 @@ public abstract class HostBuilderBase<TBuilder>(
         RegisterBus();
     }
 
+    /// <summary>
+    /// Configures the application's service collection by allowing the caller to specify custom service registrations,
+    /// application-level configuration interactions, and environment-specific adjustments.
+    /// This method provides a customizable extension point for setting up the dependency injection container and related services.
+    /// </summary>
+    /// <param name="configureServices">
+    /// A delegate that takes the application's configuration, the service collection,
+    /// and the host environment as parameters for customization of services and settings.
+    /// </param>
+    /// <returns>
+    /// The current instance of the builder, allowing for method chaining during host construction.
+    /// </returns>
     public TBuilder ConfigureServices(Action<IConfiguration, IServiceCollection, IHostEnvironment> configureServices)
     {
         configureServices.Invoke(builder.Configuration, builder.Services, builder.Environment);
         return (TBuilder)this;
     }
 
+    /// <summary>
+    /// Adds a configuration delegate for customizing RabbitMQ during the MassTransit setup.
+    /// This method allows detailed configuration of RabbitMQ features like exchanges, queues, and bindings
+    /// by adding the provided actions to an internal list of RabbitMQ configuration steps.
+    /// The configurations will be applied when MassTransit is initialized during the host build process.
+    /// </summary>
+    /// <param name="configureRabbitMq">
+    /// An action delegate that enables customization of RabbitMQ settings using the <see cref="IRabbitMqBusFactoryConfigurator"/>.
+    /// This delegate provides access to RabbitMQ-specific features and is invoked during the MassTransit bus configuration.
+    /// </param>
+    /// <returns>
+    /// The current instance of the builder, enabling method chaining for additional host configurations.
+    /// </returns>
     public TBuilder ConfigureRabbitMq(Action<IRabbitMqBusFactoryConfigurator> configureRabbitMq)
     {
         _rabbitMqConfigurations.Add(configureRabbitMq);

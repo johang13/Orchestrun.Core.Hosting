@@ -7,9 +7,15 @@ using Orchestrun.Core.Contracts.Events;
 
 namespace Orchestrun.Core.Hosting.Services;
 
+/// <summary>
+/// Background service responsible for publishing NuGet dependency information on service startup.
+/// </summary>
+/// <param name="publishEndpoint"></param>
+/// <param name="logger"></param>
 public sealed class NugetDependencyPublisher(IPublishEndpoint publishEndpoint, ILogger<NugetDependencyPublisher> logger)
     : BackgroundService
 {
+    /// <inheritdoc/>
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // DependencyContext.Default is populated by the runtime at startup from the *running*
