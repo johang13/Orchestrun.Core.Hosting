@@ -9,7 +9,7 @@ using Orchestrun.Core.Hosting.Services;
 
 namespace Orchestrun.Core.Hosting.IntegrationTests;
 
-[Collection("RabbitMQ collection")]
+[Collection("Integration Collection")]
 public sealed class NuGetDependencyPublisherTests(RabbitMqFixture fixture) : TestBase
 {
     [Fact]

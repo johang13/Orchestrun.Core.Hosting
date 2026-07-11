@@ -1,9 +1,18 @@
+using System.Data.Common;
 using System.Reflection;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Polly;
+using Polly.Retry;
+using Orchestrun.Core.Hosting.Consumers;
 using Orchestrun.Core.Hosting.Options;
 using Orchestrun.Core.Hosting.Services;
 
@@ -32,6 +41,8 @@ public abstract class HostBuilderBase<TBuilder>(
     {
         AddAppSettings();
         RegisterDefaults();
+        ConfigureOpenTelemetry();
+        ConfigureResilience();
         RegisterBus();
     }
 
@@ -80,6 +91,8 @@ public abstract class HostBuilderBase<TBuilder>(
         builder.Services.AddOpenApi();
         builder.Services.AddEndpointsApiExplorer();
         
+        builder.Services.AddSingleton<IServiceSettingsProvider, ServiceSettingsProvider>();
+        builder.Services.AddSingleton<IServiceSettingsWriter, ServiceSettingsProvider>();
         builder.Services.AddHostedService<NugetDependencyPublisher>();
     }
 
@@ -91,6 +104,55 @@ public abstract class HostBuilderBase<TBuilder>(
         else if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
             builder.Configuration.AddJsonFile("appsettings.Docker.json", true, true);
     }
+    
+    private void ConfigureOpenTelemetry()
+    {
+        var serviceName = builder.Environment.ApplicationName;
+
+        builder.Logging.AddOpenTelemetry(logging =>
+        {
+            logging.IncludeFormattedMessage = true;
+            logging.IncludeScopes = true;
+        });
+
+        builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource.AddService(serviceName))
+            .WithMetrics(metrics => metrics
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddRuntimeInstrumentation()
+                .AddMeter("MassTransit"))
+            .WithTracing(tracing => tracing
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddSource("MassTransit"));
+
+        // Only export via OTLP if an endpoint is actually configured — otherwise every
+        // service would spend startup trying (and failing) to reach a collector that isn't there.
+        if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+    }
+    
+    private void ConfigureResilience()
+    {
+        builder.Services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler());
+
+        builder.Services.AddResiliencePipeline("database", pipeline =>
+        {
+            pipeline
+                .AddRetry(new RetryStrategyOptions
+                {
+                    ShouldHandle = new PredicateBuilder()
+                        .Handle<DbException>()
+                        .Handle<TimeoutException>(),
+                    MaxRetryAttempts = 3,
+                    BackoffType = DelayBackoffType.Exponential,
+                    Delay = TimeSpan.FromMilliseconds(200),
+                    UseJitter = true
+                })
+                .AddTimeout(TimeSpan.FromSeconds(10));
+        });
+    }
 
     private void RegisterBus()
     {
@@ -101,6 +163,8 @@ public abstract class HostBuilderBase<TBuilder>(
         
         builder.Services.AddMassTransit(x =>
         {
+            x.AddConsumers(typeof(ServiceSettingsChangedConsumer).Assembly);
+            
             x.AddConsumers(Assembly.GetEntryAssembly());
             x.AddConfigureEndpointsCallback((context, name, cfg) => { cfg.UseInMemoryOutbox(context); });
             x.UsingRabbitMq((context, cfg) =>
