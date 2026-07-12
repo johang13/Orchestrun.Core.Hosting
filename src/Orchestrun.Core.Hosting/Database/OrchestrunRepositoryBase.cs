@@ -6,27 +6,16 @@ using Polly;
 namespace Orchestrun.Core.Hosting.Database;
 
 /// <summary>
-/// Marks a logical database used by repositories in the host.
-/// The type provides the keyed service name used to resolve the matching
-/// <see cref="NpgsqlDataSource"/> and <see cref="ResiliencePipeline"/>.
+/// Base class for Postgres repositories. Derived types should request their
+/// <see cref="NpgsqlDataSource"/> and <see cref="ResiliencePipeline"/> using constructor
+/// parameters attributed with <c>[FromKeyedServices("yourDatabaseName")]</c>, where the name
+/// matches the one passed to <c>AddDatabase</c> during host setup.
 /// </summary>
-public interface IDatabaseKey
-{
-    static abstract string Name { get; }
-}
-
-/// <summary>
-/// Base class for Postgres repositories that use keyed infrastructure registrations.
-/// The repository receives the matching <see cref="NpgsqlDataSource"/> and
-/// <see cref="ResiliencePipeline"/> for the database key represented by <typeparamref name="TDbKey"/>.
-/// </summary>
-public abstract class OrchestrunRepositoryBase<TDbKey>(
+public abstract class OrchestrunRepositoryBase(
     NpgsqlDataSource dataSource,
     ResiliencePipeline pipeline,
     ILogger logger)
-    where TDbKey : IDatabaseKey
 {
-    protected static string ConnectionStringName => TDbKey.Name;
     protected NpgsqlDataSource DataSource { get; } = dataSource;
     protected ResiliencePipeline Pipeline { get; } = pipeline;
     protected ILogger Logger { get; } = logger;
@@ -46,7 +35,7 @@ public abstract class OrchestrunRepositoryBase<TDbKey>(
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Database operation {Operation} failed for {ConnectionStringName}.", operationName, ConnectionStringName);
+            Logger.LogError(ex, "Database operation {Operation} failed in {Repository}.", operationName, GetType().Name);
             throw;
         }
     }
@@ -76,7 +65,7 @@ public abstract class OrchestrunRepositoryBase<TDbKey>(
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Database operation {Operation} failed for {ConnectionStringName}.", operationName, ConnectionStringName);
+            Logger.LogError(ex, "Database operation {Operation} failed in {Repository}.", operationName, GetType().Name);
             throw;
         }
     }
@@ -107,7 +96,7 @@ public abstract class OrchestrunRepositoryBase<TDbKey>(
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Database operation {Operation} failed for {ConnectionStringName}.", operationName, ConnectionStringName);
+            Logger.LogError(ex, "Database operation {Operation} failed in {Repository}.", operationName, GetType().Name);
             throw;
         }
     }

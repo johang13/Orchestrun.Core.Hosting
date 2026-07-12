@@ -7,6 +7,8 @@ var host = OrchestrunHost
     .ConfigureServices((cfg, services, host) =>
     {
         services.AddHostedService<TestPublisher>();
+        services.AddHostedService<TestDbWriter>();
+        services.AddScoped<TestItemRepository>();
     })
     .ConfigureRabbitMq(cfg =>
     {
@@ -16,6 +18,7 @@ var host = OrchestrunHost
             t.Durable = false;
         });
     })
+    .AddDatabase("OrchestrunDb", typeof(Program).Assembly)
     .Build();
 
 host.Run();
