@@ -47,7 +47,7 @@ jobs:
 
     - name: Publish Test Results
       uses: EnricoMi/publish-unit-test-result-action@v2
-      if: always() && env.GITHUB_TOKEN != ''
+      if: always()
       with:
         files: ./test-results/**/*.trx
         check_name: Test Results
